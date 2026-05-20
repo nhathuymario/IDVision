@@ -1,0 +1,329 @@
+/* ═══════════════════════════════════════════════════════════
+   Employee Check-in Page Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.checkin-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+}
+
+/* ── Animated Background ────────────────────────────────── */
+.checkin-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.checkin-bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.15;
+}
+.orb-1 {
+  width: 500px; height: 500px;
+  background: var(--accent);
+  top: -10%; left: -10%;
+  animation: float1 20s ease-in-out infinite;
+}
+.orb-2 {
+  width: 400px; height: 400px;
+  background: #8b5cf6;
+  bottom: -10%; right: -10%;
+  animation: float2 25s ease-in-out infinite;
+}
+.orb-3 {
+  width: 300px; height: 300px;
+  background: #06b6d4;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  animation: float3 30s ease-in-out infinite;
+}
+@keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(60px,40px)} }
+@keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-50px,-30px)} }
+@keyframes float3 { 0%,100%{transform:translate(-50%,-50%)} 50%{transform:translate(-40%,-60%)} }
+
+/* ── Container ──────────────────────────────────────────── */
+.checkin-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.checkin-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.checkin-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+/* ── Clock ──────────────────────────────────────────────── */
+.checkin-clock {
+  text-align: center;
+}
+.clock-time {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  background: linear-gradient(135deg, var(--text-primary), var(--accent-hover));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.clock-date {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  text-transform: capitalize;
+}
+
+/* ── Mode Tabs ──────────────────────────────────────────── */
+.checkin-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  width: 100%;
+}
+.tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.tab-btn.active {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+.tab-btn:not(.active):hover {
+  color: var(--text-primary);
+  background: var(--bg-glass-hover);
+}
+
+/* ── Checkin Content ────────────────────────────────────── */
+.checkin-content {
+  width: 100%;
+}
+
+/* ── Face Mode ──────────────────────────────────────────── */
+.face-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.camera-box {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+}
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.camera-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.face-guide {
+  position: absolute;
+  top: 15%; left: 20%; right: 20%; bottom: 15%;
+}
+.face-guide .corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.face-guide .tl { top:0;left:0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.face-guide .tr { top:0;right:0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.face-guide .bl { bottom:0;left:0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.face-guide .br { bottom:0;right:0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+.scan-line {
+  position: absolute;
+  left: 20%; right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: scanLine 2.5s linear infinite;
+  opacity: 0.7;
+}
+.camera-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+}
+.capture-btn {
+  width: 100%;
+}
+.checkin-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── Password Mode ──────────────────────────────────────── */
+.password-mode {
+  width: 100%;
+}
+.password-card {
+  padding: 32px 28px;
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+.password-card-icon {
+  width: 72px; height: 72px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--accent-surface);
+  color: var(--accent);
+}
+.password-card h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.password-card .text-muted {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 24px;
+}
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+.password-form .input-with-icon {
+  position: relative;
+}
+.pass-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+}
+.pass-toggle:hover { color: var(--text-primary); }
+.submit-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* ── Result Toast ───────────────────────────────────────── */
+.checkin-result {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 28px;
+  border-radius: var(--radius-lg);
+  max-width: 460px;
+  width: calc(100% - 40px);
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 400ms ease;
+  z-index: 100;
+}
+.result-success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--success);
+}
+.result-error {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--danger);
+}
+.result-icon-wrapper {
+  flex-shrink: 0;
+}
+.result-body h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.result-body p {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.result-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ── Footer ─────────────────────────────────────────────── */
+.checkin-footer {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 8px;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 520px) {
+  .clock-time { font-size: 2.5rem; }
+  .tab-btn { font-size: 0.8125rem; padding: 10px 8px; }
+}

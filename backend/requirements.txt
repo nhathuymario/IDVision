@@ -1,0 +1,31 @@
+# FastAPI & Server
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.19
+
+# Database
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+pgvector==0.3.6
+alembic==1.14.1
+
+# Telegram
+python-telegram-bot==21.9
+
+# Data Processing
+numpy==2.1.3
+scipy==1.14.1
+
+# Configuration & Validation
+pydantic-settings==2.7.1
+
+# File handling
+aiofiles==24.1.0
+Pillow==11.1.0
+
+# Authentication
+bcrypt==4.2.1
+PyJWT==2.10.1
+
+# HTTP client (for health checks)
+httpx==0.28.1
