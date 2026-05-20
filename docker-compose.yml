@@ -1,0 +1,86 @@
+# ================================================
+# IDVision Docker Compose
+# Face Recognition Attendance System
+# ================================================
+# Usage:
+#   docker-compose up -d        # Start all services
+#   docker-compose logs -f      # View logs
+#   docker-compose down         # Stop all services
+# ================================================
+
+services:
+  # ── PostgreSQL + pgvector ──────────────────────
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: idvision-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: idvision
+      POSTGRES_USER: idvision
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-idvision_secure_2026}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U idvision -d idvision"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── FastAPI Backend ────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: idvision-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://idvision:${DB_PASSWORD:-idvision_secure_2026}@db:5432/idvision
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./snapshots:/app/snapshots
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/health'); assert r.status_code == 200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── AI Service (Camera Processor) ──────────────
+  ai_service:
+    build:
+      context: ./ai_service
+      dockerfile: Dockerfile
+    container_name: idvision-ai
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      BACKEND_URL: http://backend:8000
+      CAMERA_SOURCE: ${CAMERA_SOURCE:-0}
+    volumes:
+      - ./ai_service/models:/app/models
+    # Uncomment for webcam passthrough on Linux:
+    # devices:
+    #   - /dev/video0:/dev/video0
+    # Uncomment for NVIDIA GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+volumes:
+  pgdata:
+    driver: local

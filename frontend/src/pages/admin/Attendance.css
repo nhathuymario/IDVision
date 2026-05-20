@@ -1,0 +1,33 @@
+.attendance-page {
+  display: flex; flex-direction: column; gap: 24px;
+}
+.filters-card {
+  padding: 20px;
+}
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.snapshot-modal {
+  position: relative;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  max-width: 600px;
+  animation: slideUp 300ms ease;
+}
+.snapshot-modal img {
+  border-radius: var(--radius-sm);
+  max-height: 80vh;
+  object-fit: contain;
+}
+.snapshot-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: rgba(0,0,0,0.5);
+  color: white; border: none;
+}
+.snapshot-close:hover { background: rgba(0,0,0,0.8); }
