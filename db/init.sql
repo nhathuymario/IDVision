@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
 -- Default admin account (password: admin123 — CHANGE IN PRODUCTION)
 -- bcrypt hash of 'admin123'
 INSERT INTO admin_users (username, password_hash, full_name)
-VALUES ('admin', '$2b$12$LJ3m4ys3Lz0QqV9FKXV6/.gYV5YE8/L9Rp6VfKdYHyMvXhFvKxKS2', 'Administrator')
+VALUES ('admin', '$2b$12$xtZgEHSgA9TE5NuUV1SCj..LijmvQ0ZXb9AjWlYEuUytpTqj8XT/m', 'Administrator')
 ON CONFLICT (username) DO NOTHING;
 
 -- ============================================================
