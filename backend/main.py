@@ -143,3 +143,8 @@ async def refresh_cache():
         "message": "Face cache refreshed.",
         "enrolled_count": count,
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    # Chạy server với uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

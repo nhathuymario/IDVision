@@ -5,13 +5,18 @@ Centralized settings using Pydantic BaseSettings with .env support.
 
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pathlib import Path
+
+
+BACKEND_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BACKEND_DIR.parent
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # ── Database ──────────────────────────────────────────────
-    DATABASE_URL: str = "postgresql+asyncpg://idvision:password@db:5432/idvision"
+    DATABASE_URL: str = "postgresql+psycopg://idvision:password@localhost:5432/idvision"
 
     # ── Telegram Bot ──────────────────────────────────────────
     TELEGRAM_BOT_TOKEN: str = ""
@@ -35,9 +40,11 @@ class Settings(BaseSettings):
     SNAPSHOT_DIR: str = "/app/snapshots"     # Directory for check-in face snapshots
 
     model_config = {
-        "env_file": ".env",
+        # Support running from either repo root or backend/ directory.
+        "env_file": (PROJECT_ROOT / ".env", BACKEND_DIR / ".env"),
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
+        "extra": "ignore",
     }
 
 

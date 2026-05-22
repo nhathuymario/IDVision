@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Users, CheckCircle, Clock, AlertTriangle, RefreshCw, TrendingUp } from 'lucide-react'
+import { Users, CheckCircle, Clock, AlertTriangle, RefreshCw, TrendingUp, ClipboardList } from 'lucide-react'
 import { getTodayStats, getTodayAttendance, getEmployees, refreshCache } from '../../api'
 import './Dashboard.css'
 

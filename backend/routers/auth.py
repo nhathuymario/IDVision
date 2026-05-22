@@ -33,7 +33,7 @@ security = HTTPBearer(auto_error=False)
 def create_jwt_token(admin_id: int, username: str) -> str:
     """Create a JWT token for admin authentication."""
     payload = {
-        "sub": admin_id,
+        "sub": str(admin_id),
         "username": username,
         "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),
         "iat": datetime.now(timezone.utc),

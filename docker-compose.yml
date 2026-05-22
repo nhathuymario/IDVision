@@ -41,7 +41,7 @@ services:
         condition: service_healthy
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://idvision:${DB_PASSWORD:-idvision_secure_2026}@db:5432/idvision
+      DATABASE_URL: postgresql+psycopg://idvision:${DB_PASSWORD:-idvision_secure_2026}@db:5432/idvision
     ports:
       - "8000:8000"
     volumes:
@@ -81,6 +81,25 @@ services:
     #           count: 1
     #           capabilities: [gpu]
 
+  # ── pgAdmin (Database Management UI) ─────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: idvision-pgadmin
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@idvision.com
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
 volumes:
   pgdata:
+    driver: local
+  pgadmin_data:
     driver: local

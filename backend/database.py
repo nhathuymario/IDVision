@@ -3,10 +3,18 @@ IDVision — Database Setup
 Async SQLAlchemy engine with pgvector support for PostgreSQL.
 """
 
+import sys
+from collections.abc import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from config import get_settings
+
+if sys.platform.startswith("win"):
+    import asyncio
+
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 settings = get_settings()
 
@@ -32,7 +40,7 @@ class Base(DeclarativeBase):
     pass
 
 
-async def get_db() -> AsyncSession:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency: yield a database session for each request."""
     async with async_session() as session:
         try:

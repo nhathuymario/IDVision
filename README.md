@@ -195,6 +195,35 @@ Nếu đến trễ:
 - **Frame Skipping**: Xử lý mỗi frame thứ 3, rate limit 3s/người
 - **HNSW Index**: pgvector approximate nearest neighbor cho fallback queries
 
+## 🧯 Troubleshooting nhanh
+
+- **Loi `password authentication failed for user "idvision"`**
+  - Thuong do da doi `DB_PASSWORD` trong `.env` sau khi volume Postgres da duoc tao truoc do.
+  - **Giu du lieu cu**: doi mat khau user `idvision` trong PostgreSQL cho khop voi `.env`.
+    - Neu dung Docker Compose:
+
+```bash
+docker compose exec -u postgres db psql -d postgres -c "ALTER USER idvision WITH PASSWORD '123456';"
+```
+
+    - Neu Postgres dang chay local tren Windows:
+
+```sql
+ALTER USER idvision WITH PASSWORD '123456';
+```
+
+  - Sau do restart backend.
+  - Cach reset sach DB (mat du lieu cu):
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+- **Canh bao NumPy tren Windows (MINGW-W64 experimental)**
+  - Day la warning, khong phai loi ket noi DB.
+  - Moi truong production nen uu tien chay bang Docker de tranh sai khac binary tren Windows.
+
 ## 📝 License
 
 Internal use only — IDVision Attendance System
