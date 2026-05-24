@@ -31,6 +31,7 @@ from services.matcher import matcher_service
 from services.payroll import (
     calculate_employee_month_stats,
     determine_status,
+    determine_period_type,
     get_or_create_policy,
     local_date_bounds_to_utc,
     to_local,
@@ -101,6 +102,7 @@ async def recognize_face(
     # ── Step 4: Determine status ────────────────────────────
     policy = await get_or_create_policy(session)
     status, late_minutes = determine_status(now, policy)
+    period_type = determine_period_type(now, policy)
 
     # Override to LOW_CONFIDENCE if below a secondary threshold
     LOW_CONFIDENCE_THRESHOLD = settings.SIMILARITY_THRESHOLD + 0.10
@@ -128,6 +130,7 @@ async def recognize_face(
         status=status,
         confidence=match.similarity,
         snapshot_path=snapshot_path,
+        period_type=period_type,
     )
     session.add(log)
     await session.flush()
@@ -252,12 +255,14 @@ async def password_checkin(
     # Determine status
     policy = await get_or_create_policy(session)
     status, late_minutes = determine_status(now, policy)
+    period_type = determine_period_type(now, policy)
 
     # Insert attendance log
     log = AttendanceLog(
         employee_id=employee.id,
         check_in_time=now,
         check_method="PASSWORD",
+        period_type=period_type,
         status=status,
         confidence=None,
         snapshot_path=None,

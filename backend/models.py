@@ -39,7 +39,13 @@ class Employee(Base):
 
 
 class AttendanceLog(Base):
-    """Attendance log recording each check-in event."""
+    """Attendance log recording each check-in/check-out event.
+    
+    Tracks multiple check-ins per day:
+    - check_in_time: timestamp of this check-in event
+    - period_type: which shift period this belongs to (MORNING_START, LUNCH_START, LUNCH_END, EVENING_END)
+    - check_out_time: when employee checks out of this period (optional, for tracking exits)
+    """
     
     __tablename__ = "attendance_logs"
 
@@ -51,7 +57,14 @@ class AttendanceLog(Base):
         index=True
     )
     check_in_time = Column(DateTime(timezone=True), nullable=False, default=datetime.now)
+    check_out_time = Column(DateTime(timezone=True), nullable=True)  # When employee checks out
     check_method = Column(String(20), default="FACE", nullable=False)  # FACE or PASSWORD
+    period_type = Column(
+        String(20), 
+        default="MORNING_START",
+        nullable=False,
+        # MORNING_START (work start), LUNCH_START, LUNCH_END, EVENING_END (work end)
+    )
     status = Column(
         String(50), 
         nullable=False,
@@ -65,6 +78,10 @@ class AttendanceLog(Base):
         CheckConstraint(
             "status IN ('SUCCESS', 'LATE', 'LOW_CONFIDENCE')",
             name="valid_status"
+        ),
+        CheckConstraint(
+            "period_type IN ('MORNING_START', 'LUNCH_START', 'LUNCH_END', 'EVENING_END')",
+            name="valid_period_type"
         ),
     )
 
