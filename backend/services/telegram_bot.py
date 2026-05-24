@@ -54,6 +54,8 @@ class TelegramNotifier:
         employee_name: str,
         check_in_time: datetime,
         confidence: float,
+        worked_days: int,
+        worked_hours: float,
         employee_chat_id: Optional[str] = None,
     ) -> None:
         """
@@ -73,7 +75,8 @@ class TelegramNotifier:
             f"✅ *[IDVision]* Nhân viên *{self._escape_md(employee_name)}* "
             f"đã chấm công thành công\\.\n"
             f"🕐 Giờ vào ca: `{time_str}` ngày `{date_str}`\n"
-            f"📊 Độ chính xác: `{confidence:.1%}`"
+            f"📊 Độ chính xác: `{confidence:.1%}`\n"
+            f"📅 Tháng này: *{worked_days} ngày* \\| *{worked_hours:.2f} giờ*"
         )
 
         await self._send_message(settings.TELEGRAM_CHAT_ID, message)
@@ -83,6 +86,7 @@ class TelegramNotifier:
             personal_msg = (
                 f"✅ Xin chào *{self._escape_md(employee_name)}*\\!\n"
                 f"Bạn đã chấm công thành công lúc `{time_str}` ngày `{date_str}`\\.\n"
+                f"📅 Tích lũy tháng này: *{worked_days} ngày* \\| *{worked_hours:.2f} giờ*\\.\n"
                 f"Chúc bạn ngày làm việc hiệu quả\\! 💪"
             )
             await self._send_message(employee_chat_id, personal_msg)
@@ -93,6 +97,8 @@ class TelegramNotifier:
         check_in_time: datetime,
         late_minutes: int,
         confidence: float,
+        worked_days: int,
+        worked_hours: float,
         employee_chat_id: Optional[str] = None,
     ) -> None:
         """Send late check-in notification."""
@@ -106,7 +112,8 @@ class TelegramNotifier:
             f"⚠️ *[IDVision]* Nhân viên *{self._escape_md(employee_name)}* đến trễ\\.\n"
             f"🕐 Giờ vào: `{time_str}` ngày `{date_str}`\n"
             f"⏰ Trễ: *{late_minutes} phút*\n"
-            f"📊 Độ chính xác: `{confidence:.1%}`"
+            f"📊 Độ chính xác: `{confidence:.1%}`\n"
+            f"📅 Tháng này: *{worked_days} ngày* \\| *{worked_hours:.2f} giờ*"
         )
 
         await self._send_message(settings.TELEGRAM_CHAT_ID, message)
@@ -115,7 +122,8 @@ class TelegramNotifier:
             personal_msg = (
                 f"⚠️ Xin chào *{self._escape_md(employee_name)}*\\,\n"
                 f"Bạn đã đến trễ *{late_minutes} phút* hôm nay\\.\n"
-                f"Giờ vào: `{time_str}` ngày `{date_str}`\\."
+                f"Giờ vào: `{time_str}` ngày `{date_str}`\\.\n"
+                f"📅 Tích lũy tháng này: *{worked_days} ngày* \\| *{worked_hours:.2f} giờ*\\."
             )
             await self._send_message(employee_chat_id, personal_msg)
 

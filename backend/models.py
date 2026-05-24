@@ -6,7 +6,7 @@ Defines Employee and AttendanceLog tables with pgvector support.
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean, 
-    DateTime, ForeignKey, CheckConstraint
+    DateTime, ForeignKey, CheckConstraint, Time
 )
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
@@ -91,3 +91,27 @@ class AdminUser(Base):
 
     def __repr__(self):
         return f"<AdminUser(id={self.id}, username='{self.username}')>"
+
+
+class AttendancePolicy(Base):
+    """Global attendance and payroll policy configured from admin dashboard."""
+
+    __tablename__ = "attendance_policies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timezone = Column(String(100), nullable=False, default="Asia/Ho_Chi_Minh")
+    work_start_time = Column(Time, nullable=False)
+    break_start_time = Column(Time, nullable=False)
+    break_end_time = Column(Time, nullable=False)
+    work_end_time = Column(Time, nullable=False)
+    late_grace_minutes = Column(Integer, nullable=False, default=0)
+    hourly_wage = Column(Float, nullable=False, default=0.0)
+    created_at = Column(DateTime(timezone=True), default=datetime.now)
+    updated_at = Column(DateTime(timezone=True), default=datetime.now, onupdate=datetime.now)
+
+    def __repr__(self):
+        return (
+            f"<AttendancePolicy(id={self.id}, timezone='{self.timezone}', "
+            f"work_start='{self.work_start_time}', work_end='{self.work_end_time}')>"
+        )
+

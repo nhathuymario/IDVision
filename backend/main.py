@@ -19,7 +19,7 @@ from config import get_settings
 from database import init_db, async_session
 from services.face_cache import face_cache
 from services.telegram_bot import telegram_notifier
-from routers import employees, enrollment, attendance, auth
+from routers import employees, enrollment, attendance, auth, policy, salary
 
 # ── Logging ─────────────────────────────────────────────────
 logging.basicConfig(
@@ -102,6 +102,8 @@ app.include_router(employees.router)
 app.include_router(enrollment.router)
 app.include_router(attendance.router)
 app.include_router(auth.router)
+app.include_router(policy.router)
+app.include_router(salary.router)
 
 # ── Static Files (Frontend) ─────────────────────────────────
 import os

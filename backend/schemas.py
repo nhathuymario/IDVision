@@ -119,6 +119,13 @@ class DailyStatsResponse(BaseModel):
     low_confidence: int
 
 
+class MonthlyWorkStats(BaseModel):
+    """Month-to-date work summary."""
+    month: str
+    worked_days: int
+    worked_hours: float
+
+
 # ═══════════════════════════════════════════════════════════════
 # Password Check-in Schemas
 # ═══════════════════════════════════════════════════════════════
@@ -145,3 +152,53 @@ class AdminLoginResponse(BaseModel):
     username: str
     full_name: Optional[str] = None
     message: str = "Login successful"
+
+
+class AttendancePolicyResponse(BaseModel):
+    """Admin-configurable attendance and payroll policy."""
+    timezone: str
+    work_start_time: str
+    break_start_time: str
+    break_end_time: str
+    work_end_time: str
+    late_grace_minutes: int
+    hourly_wage: float
+
+
+class AttendancePolicyUpdate(BaseModel):
+    """Update payload for attendance policy."""
+    timezone: str = Field(..., min_length=1, max_length=100)
+    work_start_time: str = Field(..., pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    break_start_time: str = Field(..., pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    break_end_time: str = Field(..., pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    work_end_time: str = Field(..., pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    late_grace_minutes: int = Field(..., ge=0, le=240)
+    hourly_wage: float = Field(..., ge=0)
+
+
+class SalaryEmployeeSummary(BaseModel):
+    """Payroll summary for one employee in a month."""
+    employee_id: int
+    employee_name: str
+    employee_code: str
+    worked_days: int
+    worked_hours: float
+    hourly_wage: float
+    estimated_salary: float
+
+
+class SalaryOverviewResponse(BaseModel):
+    """Payroll overview for all employees in selected month."""
+    month: str
+    total_employees: int
+    total_worked_days: int
+    total_worked_hours: float
+    total_estimated_salary: float
+    employees: list[SalaryEmployeeSummary]
+
+
+class SalaryEmployeeDetailResponse(BaseModel):
+    """Payroll detail for selected employee."""
+    month: str
+    employee: SalaryEmployeeSummary
+
