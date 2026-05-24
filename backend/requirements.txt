@@ -17,6 +17,7 @@ numpy==2.1.3
 scipy
 # Configuration & Validation
 pydantic-settings==2.7.1
+tzdata==2025.2
 
 # File handling
 aiofiles==24.1.0

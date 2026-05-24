@@ -51,11 +51,41 @@ CREATE TABLE IF NOT EXISTS admin_users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- ============================================================
+-- Table: attendance_policies
+-- Global attendance schedule and payroll configuration
+-- ============================================================
+CREATE TABLE IF NOT EXISTS attendance_policies (
+    id SERIAL PRIMARY KEY,
+    timezone VARCHAR(100) NOT NULL DEFAULT 'Asia/Ho_Chi_Minh',
+    work_start_time TIME NOT NULL,
+    break_start_time TIME NOT NULL,
+    break_end_time TIME NOT NULL,
+    work_end_time TIME NOT NULL,
+    late_grace_minutes INTEGER NOT NULL DEFAULT 0,
+    hourly_wage FLOAT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Default admin account (password: admin123 — CHANGE IN PRODUCTION)
 -- bcrypt hash of 'admin123'
 INSERT INTO admin_users (username, password_hash, full_name)
 VALUES ('admin', '$2b$12$xtZgEHSgA9TE5NuUV1SCj..LijmvQ0ZXb9AjWlYEuUytpTqj8XT/m', 'Administrator')
 ON CONFLICT (username) DO NOTHING;
+
+-- Default attendance policy
+INSERT INTO attendance_policies (
+    timezone,
+    work_start_time,
+    break_start_time,
+    break_end_time,
+    work_end_time,
+    late_grace_minutes,
+    hourly_wage
+)
+VALUES ('Asia/Ho_Chi_Minh', '08:00', '12:00', '13:00', '17:30', 0, 0)
+ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- Indexes for Performance
