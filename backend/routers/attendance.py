@@ -11,7 +11,7 @@ from datetime import datetime, date, timedelta, timezone
 
 import bcrypt
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -28,6 +28,13 @@ from schemas import (
     DailyStatsResponse,
 )
 from services.matcher import matcher_service
+from services.payroll import (
+    calculate_employee_month_stats,
+    determine_status,
+    get_or_create_policy,
+    local_date_bounds_to_utc,
+    to_local,
+)
 from services.telegram_bot import telegram_notifier
 
 logger = logging.getLogger(__name__)
@@ -92,8 +99,8 @@ async def recognize_face(
         )
 
     # ── Step 4: Determine status ────────────────────────────
-    status = matcher_service.determine_status(now)
-    late_minutes = matcher_service.calculate_late_minutes(now)
+    policy = await get_or_create_policy(session)
+    status, late_minutes = determine_status(now, policy)
 
     # Override to LOW_CONFIDENCE if below a secondary threshold
     LOW_CONFIDENCE_THRESHOLD = settings.SIMILARITY_THRESHOLD + 0.10
@@ -132,24 +139,36 @@ async def recognize_face(
 
     # ── Step 7: Send Telegram notification ──────────────────
     try:
+        local_now = to_local(now, policy)
+        month_str = to_local(now, policy).strftime("%Y-%m")
+        month_stats = await calculate_employee_month_stats(
+            session=session,
+            employee_id=match.employee_id,
+            month_str=month_str,
+            policy=policy,
+        )
         if status == "SUCCESS":
             await telegram_notifier.send_checkin_success(
                 employee_name=match.employee_name,
-                check_in_time=now,
+                check_in_time=local_now,
                 confidence=match.similarity,
+                worked_days=month_stats.worked_days,
+                worked_hours=month_stats.worked_hours,
                 employee_chat_id=match.telegram_chat_id,
             )
         elif status == "LATE":
             await telegram_notifier.send_late_notification(
                 employee_name=match.employee_name,
-                check_in_time=now,
+                check_in_time=local_now,
                 late_minutes=late_minutes,
                 confidence=match.similarity,
+                worked_days=month_stats.worked_days,
+                worked_hours=month_stats.worked_hours,
                 employee_chat_id=match.telegram_chat_id,
             )
         elif status == "LOW_CONFIDENCE":
             await telegram_notifier.send_low_confidence_alert(
-                check_in_time=now,
+                check_in_time=local_now,
                 confidence=match.similarity,
             )
     except Exception as e:
@@ -231,8 +250,8 @@ async def password_checkin(
         )
 
     # Determine status
-    status = matcher_service.determine_status(now)
-    late_minutes = matcher_service.calculate_late_minutes(now)
+    policy = await get_or_create_policy(session)
+    status, late_minutes = determine_status(now, policy)
 
     # Insert attendance log
     log = AttendanceLog(
@@ -252,19 +271,31 @@ async def password_checkin(
 
     # Send Telegram notification
     try:
+        local_now = to_local(now, policy)
+        month_str = to_local(now, policy).strftime("%Y-%m")
+        month_stats = await calculate_employee_month_stats(
+            session=session,
+            employee_id=employee.id,
+            month_str=month_str,
+            policy=policy,
+        )
         if status == "SUCCESS":
             await telegram_notifier.send_checkin_success(
                 employee_name=employee.name,
-                check_in_time=now,
+                check_in_time=local_now,
                 confidence=1.0,
+                worked_days=month_stats.worked_days,
+                worked_hours=month_stats.worked_hours,
                 employee_chat_id=employee.telegram_chat_id,
             )
         elif status == "LATE":
             await telegram_notifier.send_late_notification(
                 employee_name=employee.name,
-                check_in_time=now,
+                check_in_time=local_now,
                 late_minutes=late_minutes,
                 confidence=1.0,
+                worked_days=month_stats.worked_days,
+                worked_hours=month_stats.worked_hours,
                 employee_chat_id=employee.telegram_chat_id,
             )
     except Exception as e:
@@ -291,10 +322,9 @@ async def get_today_attendance(
     session: AsyncSession = Depends(get_db),
 ):
     """Get all attendance records for today."""
-    today_start = datetime.now(timezone.utc).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
-    today_end = today_start + timedelta(days=1)
+    policy = await get_or_create_policy(session)
+    local_today = to_local(datetime.now(timezone.utc), policy).date()
+    today_start, today_end = local_date_bounds_to_utc(local_today, policy)
 
     stmt = (
         select(AttendanceLog)
@@ -333,8 +363,9 @@ async def get_attendance_report(
     session: AsyncSession = Depends(get_db),
 ):
     """Get attendance report for a date range."""
-    start = datetime.combine(date_from, datetime.min.time()).replace(tzinfo=timezone.utc)
-    end = datetime.combine(date_to + timedelta(days=1), datetime.min.time()).replace(tzinfo=timezone.utc)
+    policy = await get_or_create_policy(session)
+    start, _ = local_date_bounds_to_utc(date_from, policy)
+    end, _ = local_date_bounds_to_utc(date_to + timedelta(days=1), policy)
 
     stmt = (
         select(AttendanceLog)
@@ -365,6 +396,7 @@ async def get_attendance_report(
                 employee_id=log.employee_id,
                 employee_name=log.employee.name,
                 check_in_time=log.check_in_time,
+                check_method=log.check_method or "FACE",
                 status=log.status,
                 confidence=log.confidence,
                 snapshot_path=log.snapshot_path,
@@ -379,10 +411,9 @@ async def get_today_stats(
     session: AsyncSession = Depends(get_db),
 ):
     """Get today's attendance statistics summary."""
-    today_start = datetime.now(timezone.utc).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
-    today_end = today_start + timedelta(days=1)
+    policy = await get_or_create_policy(session)
+    local_today = to_local(datetime.now(timezone.utc), policy).date()
+    today_start, today_end = local_date_bounds_to_utc(local_today, policy)
 
     base_filter = and_(
         AttendanceLog.check_in_time >= today_start,
@@ -406,7 +437,7 @@ async def get_today_stats(
         stats[status] = result.scalar_one()
 
     return DailyStatsResponse(
-        date=date.today().isoformat(),
+        date=local_today.isoformat(),
         total_checkins=total,
         on_time=stats.get("SUCCESS", 0),
         late=stats.get("LATE", 0),

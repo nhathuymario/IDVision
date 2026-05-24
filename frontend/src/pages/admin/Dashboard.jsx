@@ -1,39 +1,46 @@
-import { useState, useEffect } from 'react'
-import { Users, CheckCircle, Clock, AlertTriangle, RefreshCw, TrendingUp, ClipboardList } from 'lucide-react'
-import { getTodayStats, getTodayAttendance, getEmployees, refreshCache } from '../../api'
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Users, CheckCircle, Clock, AlertTriangle, RefreshCw, TrendingUp, ClipboardList, Settings } from 'lucide-react'
+import { getTodayStats, getTodayAttendance, getEmployees, refreshCache, getAdminPolicy } from '../../api'
 import './Dashboard.css'
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
   const [recentLogs, setRecentLogs] = useState([])
   const [empCount, setEmpCount] = useState(0)
+  const [policy, setPolicy] = useState(null)
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
-  useEffect(() => { loadData() }, [])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [s, logs, emps] = await Promise.all([
+      const [s, logs, emps, policyData] = await Promise.all([
         getTodayStats(),
         getTodayAttendance(),
         getEmployees({ limit: 1 }),
+        getAdminPolicy(),
       ])
       setStats(s)
       setRecentLogs(logs.slice(0, 10))
       setEmpCount(emps.total)
+      setPolicy(policyData)
     } catch(e) {
       console.error('Dashboard load error:', e)
     }
     setLoading(false)
-  }
+  }, [])
 
-  async function handleRefreshCache() {
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
+
+  const handleRefreshCache = useCallback(async () => {
     try {
       await refreshCache()
       alert('Cache đã được làm mới!')
     } catch { alert('Lỗi!') }
-  }
+  }, [])
 
   const statCards = stats ? [
     { label: 'Tổng nhân viên', value: empCount, icon: Users, color: 'var(--accent)', bg: 'var(--accent-surface)' },
@@ -86,8 +93,8 @@ export default function Dashboard() {
 
       {/* Stats */}
       <div className="stat-grid">
-        {statCards.map((c, i) => (
-          <div className="stat-card card" key={i}>
+        {statCards.map((c) => (
+          <div className="stat-card card" key={c.label}>
             <div className="stat-icon" style={{ background: c.bg, color: c.color }}>
               <c.icon size={22} />
             </div>
@@ -100,6 +107,27 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Logs */}
+      {policy && (
+        <div className="card policy-summary-card">
+          <div className="policy-summary-header">
+            <div>
+              <h2>Cấu hình chấm công</h2>
+              <p className="text-muted">Đang áp dụng cho tính trễ và tính lương</p>
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={() => navigate('/admin/policy')}>
+              <Settings size={14} /> Chỉnh cấu hình
+            </button>
+          </div>
+          <div className="policy-grid">
+            <div><span>Giờ làm</span><strong>{policy.work_start_time} → {policy.work_end_time}</strong></div>
+            <div><span>Nghỉ trưa</span><strong>{policy.break_start_time} → {policy.break_end_time}</strong></div>
+            <div><span>Phút trễ cho phép</span><strong>{policy.late_grace_minutes} phút</strong></div>
+            <div><span>Lương / giờ</span><strong>{policy.hourly_wage.toLocaleString('vi-VN')}</strong></div>
+            <div><span>Timezone</span><strong>{policy.timezone}</strong></div>
+          </div>
+        </div>
+      )}
+
       <div className="card recent-logs-card">
         <h2>Chấm công gần đây</h2>
         {recentLogs.length === 0 ? (

@@ -139,6 +139,9 @@
 /* Overlay */
 .sidebar-overlay {
   display: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
 /* ── Responsive ─────────────────────────────────────────── */

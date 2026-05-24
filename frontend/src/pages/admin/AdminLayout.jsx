@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Users, ClipboardList, LogOut, ShieldCheck, Menu, X, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Users, ClipboardList, LogOut, ShieldCheck, Menu, X, ChevronRight, Settings, Coins } from 'lucide-react'
 import { adminMe } from '../../api'
 import './AdminLayout.css'
 
@@ -8,10 +8,12 @@ const NAV_ITEMS = [
   { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/employees', icon: Users, label: 'Nhân viên' },
   { to: '/admin/attendance', icon: ClipboardList, label: 'Chấm công' },
+  { to: '/admin/policy', icon: Settings, label: 'Cấu hình' },
+  { to: '/admin/salary', icon: Coins, label: 'Lương' },
 ]
 
 export default function AdminLayout() {
-  const [adminName, setAdminName] = useState(localStorage.getItem('admin_name') || 'Admin')
+  const adminName = localStorage.getItem('admin_name') || 'Admin'
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -73,7 +75,14 @@ export default function AdminLayout() {
       </aside>
 
       {/* Overlay for mobile */}
-      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="sidebar-overlay"
+          aria-label="Đóng menu"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* Main area */}
       <div className="admin-main">

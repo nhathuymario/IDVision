@@ -5,6 +5,8 @@ import AdminLayout from './pages/admin/AdminLayout.jsx'
 import Dashboard from './pages/admin/Dashboard.jsx'
 import Employees from './pages/admin/Employees.jsx'
 import Attendance from './pages/admin/Attendance.jsx'
+import Policy from './pages/admin/Policy.jsx'
+import Salary from './pages/admin/Salary.jsx'
 
 export default function App() {
   return (
@@ -20,6 +22,8 @@ export default function App() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="employees" element={<Employees />} />
         <Route path="attendance" element={<Attendance />} />
+        <Route path="policy" element={<Policy />} />
+        <Route path="salary" element={<Salary />} />
       </Route>
 
       {/* Fallback */}

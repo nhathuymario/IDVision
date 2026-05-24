@@ -29,3 +29,20 @@
 .recent-logs-card h2 { font-size: 1.125rem; font-weight: 700; margin-bottom: 16px; }
 .table-responsive { overflow-x: auto; }
 .td-name { font-weight: 600; color: var(--text-primary); }
+
+/* Policy summary */
+.policy-summary-card { display: flex; flex-direction: column; gap: 16px; }
+.policy-summary-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.policy-summary-header h2 { font-size: 1.125rem; font-weight: 700; }
+.policy-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px;
+}
+.policy-grid div {
+  display: flex; flex-direction: column; gap: 4px; padding: 12px;
+  border-radius: var(--radius-sm); background: var(--bg-glass); border: 1px solid var(--border);
+}
+.policy-grid span { color: var(--text-muted); font-size: 0.8125rem; }
+.policy-grid strong { color: var(--text-primary); }
+

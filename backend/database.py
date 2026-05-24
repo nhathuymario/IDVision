@@ -55,8 +55,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db():
     """Initialize database connection (called on startup)."""
-    # Verify connection is working
+    import models  # noqa: F401 - ensures ORM models are registered on Base.metadata
+
     async with engine.begin() as conn:
+        # Create any missing tables introduced by new backend versions.
+        await conn.run_sync(Base.metadata.create_all)
         # pgvector extension should already be created via init.sql
         await conn.execute(
             __import__("sqlalchemy").text("SELECT 1")

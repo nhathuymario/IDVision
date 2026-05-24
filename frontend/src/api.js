@@ -24,8 +24,8 @@ async function request(endpoint, options = {}) {
   if (res.status === 401) {
     localStorage.removeItem('admin_token');
     // Don't redirect on employee pages
-    if (window.location.pathname.startsWith('/admin')) {
-      window.location.href = '/admin/login';
+    if (globalThis.location?.pathname.startsWith('/admin')) {
+      globalThis.location.href = '/admin/login';
     }
   }
 
@@ -47,7 +47,7 @@ export async function faceRecognize(embedding, snapshotBase64) {
     body: JSON.stringify({
       embedding,
       is_live: true,
-      liveness_score: 1.0,
+      liveness_score: 1,
       snapshot_base64: snapshotBase64,
     }),
   });
@@ -142,3 +142,40 @@ export async function refreshCache() {
   const res = await request('/api/cache/refresh', { method: 'POST' });
   return res.json();
 }
+
+// ── Admin Policy & Salary ───────────────────────────────────
+export async function getAdminPolicy() {
+  const res = await request('/api/admin/policy');
+  if (!res.ok) throw new Error('Failed to load policy');
+  return res.json();
+}
+
+export async function updateAdminPolicy(data) {
+  const res = await request('/api/admin/policy', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update policy');
+  return res.json();
+}
+
+export async function getSalaryOverview(month) {
+  const params = new URLSearchParams();
+  if (month) params.append('month', month);
+  const qs = params.toString();
+  const query = qs ? `?${qs}` : '';
+  const res = await request(`/api/admin/salary/overview${query}`);
+  if (!res.ok) throw new Error('Failed to load salary overview');
+  return res.json();
+}
+
+export async function getEmployeeSalary(employeeId, month) {
+  const params = new URLSearchParams();
+  if (month) params.append('month', month);
+  const qs = params.toString();
+  const query = qs ? `?${qs}` : '';
+  const res = await request(`/api/admin/salary/employee/${employeeId}${query}`);
+  if (!res.ok) throw new Error('Failed to load employee salary');
+  return res.json();
+}
+

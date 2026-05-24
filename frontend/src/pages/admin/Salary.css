@@ -1,0 +1,8 @@
+﻿.salary-page { display: flex; flex-direction: column; gap: 24px; }
+.salary-controls { display: flex; align-items: center; gap: 12px; }
+.month-input-wrap { min-width: 180px; }
+.loading-state { padding: 60px 0; display: flex; justify-content: center; }
+.detail-card { display: flex; flex-direction: column; gap: 8px; }
+.detail-card h2 { margin-bottom: 8px; }
+.detail-card p { color: var(--text-secondary); }
+.detail-card strong { color: var(--text-primary); }
