@@ -5,7 +5,7 @@ Face Recognition Attendance System with:
 - InsightFace (ArcFace) for masked face recognition
 - PostgreSQL + pgvector for vector storage
 - In-memory face cache for ultra-fast matching
-- Telegram Bot for real-time notifications
+- Telegram Bot for real-time notifications + deep linking
 """
 
 import logging
@@ -15,11 +15,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from sqlalchemy import select
+
 from config import get_settings
 from database import init_db, async_session
+from models import Employee
 from services.face_cache import face_cache
 from services.telegram_bot import telegram_notifier
 from routers import employees, enrollment, attendance, auth, policy, salary
+from routers import telegram_webhook
 
 # ── Logging ─────────────────────────────────────────────────
 logging.basicConfig(
@@ -32,6 +36,33 @@ logger = logging.getLogger("idvision")
 settings = get_settings()
 
 
+# ── Telegram Deep Link Callback ─────────────────────────────
+async def _on_telegram_link(employee_code: str, chat_id: str) -> bool:
+    """Called when an employee clicks a Telegram deep link and sends /start.
+    
+    Looks up the employee by code and saves their chat_id.
+    Returns True if successful.
+    """
+    async with async_session() as session:
+        result = await session.execute(
+            select(Employee).where(
+                Employee.employee_code == employee_code,
+                Employee.is_active == True,
+            )
+        )
+        employee = result.scalar_one_or_none()
+        if not employee:
+            logger.warning(f"Telegram deep link: employee '{employee_code}' not found.")
+            return False
+
+        employee.telegram_chat_id = chat_id
+        await session.commit()
+        logger.info(
+            f"Telegram linked: {employee.name} ({employee_code}) → chat_id={chat_id}"
+        )
+        return True
+
+
 # ── Application Lifespan ────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -40,9 +71,11 @@ async def lifespan(app: FastAPI):
     1. Initialize database connection
     2. Load face encodings into memory cache
     3. Initialize Telegram bot
+    4. Start Telegram polling for deep links
     
     Shutdown:
-    1. Cleanup Telegram bot
+    1. Stop Telegram polling
+    2. Cleanup Telegram bot
     """
     logger.info("=" * 60)
     logger.info("🚀 IDVision — Starting up...")
@@ -60,12 +93,19 @@ async def lifespan(app: FastAPI):
     # 3. Telegram bot
     await telegram_notifier.initialize()
 
+    # 4. Start Telegram polling for deep links
+    if telegram_notifier.is_enabled:
+        await telegram_notifier.start_polling(on_link_callback=_on_telegram_link)
+        logger.info("✅ Telegram deep link polling started.")
+
     logger.info("=" * 60)
     logger.info("🟢 IDVision is ready!")
     logger.info(f"   Similarity threshold: {settings.SIMILARITY_THRESHOLD}")
     logger.info(f"   Late threshold: {settings.LATE_THRESHOLD_HOUR:02d}:{settings.LATE_THRESHOLD_MINUTE:02d}")
     logger.info(f"   Anti-spoofing: {'Enabled' if settings.ANTI_SPOOFING_ENABLED else 'Disabled'}")
     logger.info(f"   Duplicate check: {settings.DUPLICATE_CHECK_MINUTES} min")
+    if telegram_notifier.is_enabled:
+        logger.info(f"   Telegram bot: @{telegram_notifier.bot_username}")
     logger.info("=" * 60)
 
     yield
@@ -104,6 +144,7 @@ app.include_router(attendance.router)
 app.include_router(auth.router)
 app.include_router(policy.router)
 app.include_router(salary.router)
+app.include_router(telegram_webhook.router)
 
 # ── Static Files (Frontend) ─────────────────────────────────
 import os

@@ -6,7 +6,7 @@ Defines Employee and AttendanceLog tables with pgvector support.
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean, 
-    DateTime, ForeignKey, CheckConstraint, Time
+    DateTime, ForeignKey, CheckConstraint, Time, Text, JSON
 )
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
@@ -131,4 +131,23 @@ class AttendancePolicy(Base):
             f"<AttendancePolicy(id={self.id}, timezone='{self.timezone}', "
             f"work_start='{self.work_start_time}', work_end='{self.work_end_time}')>"
         )
+
+
+class SalarySlipConfig(Base):
+    """Admin-customizable salary slip template configuration."""
+
+    __tablename__ = "salary_slip_config"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_name = Column(String(255), nullable=False, default="IDVision")
+    company_address = Column(Text, default="")
+    company_phone = Column(String(50), default="")
+    extra_earnings = Column(JSON, nullable=False, default=list)   # [{label, default_amount}]
+    extra_deductions = Column(JSON, nullable=False, default=list) # [{label, default_amount}]
+    footer_note = Column(Text, default="")
+    created_at = Column(DateTime(timezone=True), default=datetime.now)
+    updated_at = Column(DateTime(timezone=True), default=datetime.now, onupdate=datetime.now)
+
+    def __repr__(self):
+        return f"<SalarySlipConfig(id={self.id}, company='{self.company_name}')>"
 

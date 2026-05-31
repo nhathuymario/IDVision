@@ -185,6 +185,7 @@ class SalaryEmployeeSummary(BaseModel):
     worked_hours: float
     hourly_wage: float
     estimated_salary: float
+    telegram_linked: bool = False
 
 
 class SalaryOverviewResponse(BaseModel):
@@ -201,4 +202,69 @@ class SalaryEmployeeDetailResponse(BaseModel):
     """Payroll detail for selected employee."""
     month: str
     employee: SalaryEmployeeSummary
+
+
+# ═══════════════════════════════════════════════════════════════
+# Salary Slip Config Schemas
+# ═══════════════════════════════════════════════════════════════
+
+class SlipItemSchema(BaseModel):
+    """A single extra earning or deduction line item."""
+    label: str = Field(..., min_length=1, max_length=100, examples=["Phụ cấp ăn trưa"])
+    default_amount: float = Field(0, ge=0, examples=[500000])
+
+
+class SalarySlipConfigResponse(BaseModel):
+    """Current salary slip template configuration."""
+    company_name: str
+    company_address: str
+    company_phone: str
+    extra_earnings: list[SlipItemSchema]
+    extra_deductions: list[SlipItemSchema]
+    footer_note: str
+
+    model_config = {"from_attributes": True}
+
+
+class SalarySlipConfigUpdate(BaseModel):
+    """Update payload for salary slip template."""
+    company_name: str = Field(..., min_length=1, max_length=255)
+    company_address: str = Field("", max_length=500)
+    company_phone: str = Field("", max_length=50)
+    extra_earnings: list[SlipItemSchema] = Field(default_factory=list)
+    extra_deductions: list[SlipItemSchema] = Field(default_factory=list)
+    footer_note: str = Field("", max_length=1000)
+
+
+class SalarySendRequest(BaseModel):
+    """Request body for sending a salary slip to one employee."""
+    extra_earnings: list[SlipItemSchema] = Field(default_factory=list)
+    extra_deductions: list[SlipItemSchema] = Field(default_factory=list)
+    note: str = Field("", max_length=500)
+
+
+class SalarySendResult(BaseModel):
+    """Result of sending a salary slip."""
+    employee_id: int
+    employee_name: str
+    success: bool
+    message: str
+
+
+class TelegramLinkResponse(BaseModel):
+    """Deep link for employee Telegram pairing."""
+    employee_id: int
+    employee_name: str
+    employee_code: str
+    deep_link: str
+    bot_username: str
+    is_linked: bool
+
+
+class TelegramBotStatus(BaseModel):
+    """Telegram bot status information."""
+    enabled: bool
+    bot_username: Optional[str] = None
+    bot_name: Optional[str] = None
+    deep_link_base: Optional[str] = None
 
