@@ -1,0 +1,18 @@
+﻿.policy-page { display: flex; flex-direction: column; gap: 24px; }
+.page-header {
+  display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+}
+.page-header h1 { font-size: 1.5rem; font-weight: 800; }
+.loading-state { padding: 60px 0; display: flex; justify-content: center; }
+.policy-help-card { display: grid; gap: 12px; }
+.policy-help-item { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); }
+.policy-form { display: flex; flex-direction: column; gap: 20px; }
+.policy-grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.policy-message { padding: 12px 14px; border-radius: var(--radius-sm); background: var(--bg-glass); border: 1px solid var(--border); color: var(--text-secondary); }
+.policy-actions { display: flex; justify-content: flex-end; }
+.policy-summary-card { display: flex; flex-direction: column; gap: 16px; }
+.policy-summary-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.policy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.policy-grid div { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: var(--radius-sm); background: var(--bg-glass); border: 1px solid var(--border); }
+.policy-grid span { color: var(--text-muted); font-size: 0.8125rem; }
+.policy-grid strong { color: var(--text-primary); }

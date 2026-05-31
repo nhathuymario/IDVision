@@ -1,35 +1,94 @@
-.employees-page {
-  display: flex; flex-direction: column; gap: 24px;
-}
-.page-header {
-  display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px;
-}
-.page-header h1 { font-size: 1.5rem; font-weight: 800; }
-
-.table-toolbar {
-  margin-bottom: 20px;
-}
-.search-box { max-width: 300px; }
-
-.action-btns {
-  display: flex; gap: 6px;
+/* ── Employees Page Styles ──────────────────────────── */
+.employees-page .table-toolbar {
+  margin-bottom: 1rem;
 }
 
-.loading-state {
-  padding: 60px 0; display: flex; justify-content: center;
+.employees-page .search-box {
+  max-width: 320px;
 }
 
-.modal-form {
-  display: flex; flex-direction: column; gap: 16px;
-}
-.modal-actions {
-  display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px;
+/* ── Telegram Link Modal ──────────────────────────── */
+.telegram-link-body {
+  padding: 0.5rem 0;
 }
 
+.telegram-info {
+  margin-bottom: 1.25rem;
+}
+
+.telegram-info p {
+  margin: 0.25rem 0;
+}
+
+.telegram-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.telegram-link-section,
+.telegram-qr-section,
+.telegram-steps {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.telegram-steps {
+  border-bottom: none;
+}
+
+.telegram-link-section h3,
+.telegram-qr-section h3,
+.telegram-steps h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.link-copy-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.link-copy-row .input-field {
+  flex: 1;
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--accent);
+  background: var(--surface);
+}
+
+.qr-container {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.qr-image {
+  width: 200px;
+  height: 200px;
+  border-radius: 12px;
+  border: 3px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.telegram-steps ol {
+  margin: 0.5rem 0 0;
+  padding-left: 1.5rem;
+}
+
+.telegram-steps ol li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+/* ── Enroll Info ──────────────────────────────────── */
 .enroll-info {
-  background: var(--bg-glass);
-  padding: 12px 16px;
-  border-radius: var(--radius-sm);
-  margin-bottom: 20px;
+  padding: 0 1rem;
+  margin-bottom: 0.5rem;
 }
-.file-input { padding: 8px; }
+
+.enroll-info p {
+  margin: 0.25rem 0;
+}

@@ -179,3 +179,69 @@ export async function getEmployeeSalary(employeeId, month) {
   return res.json();
 }
 
+// ── Salary Slip Config ──────────────────────────────────────
+export async function getSlipConfig() {
+  const res = await request('/api/admin/salary/slip-config');
+  if (!res.ok) throw new Error('Failed to load slip config');
+  return res.json();
+}
+
+export async function updateSlipConfig(data) {
+  const res = await request('/api/admin/salary/slip-config', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update slip config');
+  return res.json();
+}
+
+// ── Salary PDF Download ─────────────────────────────────────
+export async function downloadSalaryPdf(employeeId, month) {
+  const params = new URLSearchParams();
+  if (month) params.append('month', month);
+  const qs = params.toString();
+  const query = qs ? `?${qs}` : '';
+  const res = await request(`/api/admin/salary/employee/${employeeId}/pdf${query}`);
+  if (!res.ok) throw new Error('Failed to download PDF');
+  return res.blob();
+}
+
+// ── Send Salary Slip via Telegram ───────────────────────────
+export async function sendSalarySlip(employeeId, month, body = null) {
+  const params = new URLSearchParams();
+  if (month) params.append('month', month);
+  const qs = params.toString();
+  const query = qs ? `?${qs}` : '';
+  const res = await request(`/api/admin/salary/send/${employeeId}${query}`, {
+    method: 'POST',
+    body: body ? JSON.stringify(body) : JSON.stringify({}),
+  });
+  if (!res.ok) throw new Error('Failed to send salary slip');
+  return res.json();
+}
+
+export async function sendAllSalarySlips(month) {
+  const params = new URLSearchParams();
+  if (month) params.append('month', month);
+  const qs = params.toString();
+  const query = qs ? `?${qs}` : '';
+  const res = await request(`/api/admin/salary/send-all${query}`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to send salary slips');
+  return res.json();
+}
+
+// ── Telegram Integration ────────────────────────────────────
+export async function getTelegramStatus() {
+  const res = await request('/api/admin/telegram/status');
+  if (!res.ok) throw new Error('Failed to get Telegram status');
+  return res.json();
+}
+
+export async function getTelegramLink(employeeId) {
+  const res = await request(`/api/admin/telegram/link/${employeeId}`);
+  if (!res.ok) throw new Error('Failed to get Telegram link');
+  return res.json();
+}
+

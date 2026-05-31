@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, Edit2, Trash2, Camera, KeyRound } from 'lucide-react'
-import { getEmployees, createEmployee, updateEmployee, deleteEmployee, enrollFace } from '../../api'
+import { Plus, Search, Edit2, Trash2, Camera, KeyRound, MessageCircle, Copy, Check } from 'lucide-react'
+import { getEmployees, createEmployee, updateEmployee, deleteEmployee, enrollFace, getTelegramLink } from '../../api'
 import './Employees.css'
 
 export default function Employees() {
@@ -22,6 +22,12 @@ export default function Employees() {
   const [enrollEmp, setEnrollEmp] = useState(null)
   const [enrollFiles, setEnrollFiles] = useState([])
   const [enrollLoading, setEnrollLoading] = useState(false)
+
+  // Telegram link modal
+  const [isTelegramOpen, setIsTelegramOpen] = useState(false)
+  const [telegramData, setTelegramData] = useState(null)
+  const [telegramLoading, setTelegramLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => { loadData() }, [page, search])
 
@@ -92,6 +98,30 @@ export default function Employees() {
     setEnrollLoading(false)
   }
 
+  async function openTelegramLink(emp) {
+    setTelegramLoading(true)
+    setIsTelegramOpen(true)
+    setCopied(false)
+    try {
+      const data = await getTelegramLink(emp.id)
+      setTelegramData(data)
+    } catch (e) {
+      console.error(e)
+      setTelegramData(null)
+      alert('Không thể tạo link Telegram. Kiểm tra bot đã được cấu hình.')
+      setIsTelegramOpen(false)
+    }
+    setTelegramLoading(false)
+  }
+
+  function copyLink() {
+    if (telegramData?.deep_link) {
+      navigator.clipboard.writeText(telegramData.deep_link)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   return (
     <div className="employees-page">
       <div className="page-header">
@@ -125,6 +155,7 @@ export default function Employees() {
                   <th>Phòng ban</th>
                   <th>Face ID</th>
                   <th>Mật khẩu</th>
+                  <th>Telegram</th>
                   <th>Thao tác</th>
                 </tr>
               </thead>
@@ -145,9 +176,17 @@ export default function Employees() {
                         : <span className="badge badge-warning">Không</span>}
                     </td>
                     <td>
+                      {emp.telegram_chat_id
+                        ? <span className="badge badge-success" title={`Chat ID: ${emp.telegram_chat_id}`}>✅ Linked</span>
+                        : <span className="badge badge-warning">Chưa</span>}
+                    </td>
+                    <td>
                       <div className="action-btns">
                         <button className="btn btn-icon btn-secondary" title="Đăng ký Face ID" onClick={() => openEnroll(emp)}>
                           <Camera size={14} />
+                        </button>
+                        <button className="btn btn-icon btn-secondary" title="Liên kết Telegram" onClick={() => openTelegramLink(emp)}>
+                          <MessageCircle size={14} />
                         </button>
                         <button className="btn btn-icon btn-secondary" title="Sửa" onClick={() => openModal(emp)}>
                           <Edit2 size={14} />
@@ -231,6 +270,68 @@ export default function Employees() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Telegram Deep Link Modal */}
+      {isTelegramOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Liên kết Telegram</h2>
+              <button className="modal-close" onClick={() => { setIsTelegramOpen(false); setTelegramData(null) }}>×</button>
+            </div>
+            {telegramLoading ? (
+              <div className="loading-state"><div className="spinner" /></div>
+            ) : telegramData && (
+              <div className="telegram-link-body">
+                <div className="telegram-info">
+                  <p>Nhân viên: <strong>{telegramData.employee_name}</strong> ({telegramData.employee_code})</p>
+                  <p className="telegram-status">
+                    Trạng thái: {telegramData.is_linked
+                      ? <span className="badge badge-success">Đã liên kết</span>
+                      : <span className="badge badge-warning">Chưa liên kết</span>}
+                  </p>
+                </div>
+
+                <div className="telegram-link-section">
+                  <h3>🔗 Link liên kết</h3>
+                  <p className="text-muted">Gửi link này cho nhân viên. Khi họ nhấn vào link và bấm "Start" trên Telegram, hệ thống sẽ tự động liên kết.</p>
+                  <div className="link-copy-row">
+                    <input className="input-field" readOnly value={telegramData.deep_link} />
+                    <button className="btn btn-secondary" onClick={copyLink} title="Copy link">
+                      {copied ? <Check size={16} /> : <Copy size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="telegram-qr-section">
+                  <h3>📱 QR Code</h3>
+                  <p className="text-muted">Hoặc cho nhân viên quét QR code này bằng điện thoại:</p>
+                  <div className="qr-container">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(telegramData.deep_link)}`}
+                      alt="QR Code"
+                      className="qr-image"
+                    />
+                  </div>
+                </div>
+
+                <div className="telegram-steps">
+                  <h3>📋 Hướng dẫn</h3>
+                  <ol>
+                    <li>Gửi link hoặc QR code cho nhân viên</li>
+                    <li>Nhân viên mở link → Telegram mở bot <strong>@{telegramData.bot_username}</strong></li>
+                    <li>Nhân viên nhấn nút <strong>"Start"</strong></li>
+                    <li>Hệ thống tự động liên kết → Hoàn tất! ✅</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={() => { setIsTelegramOpen(false); setTelegramData(null); loadData() }}>Đóng</button>
+            </div>
           </div>
         </div>
       )}

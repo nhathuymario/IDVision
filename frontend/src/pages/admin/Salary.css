@@ -1,8 +1,205 @@
-﻿.salary-page { display: flex; flex-direction: column; gap: 24px; }
-.salary-controls { display: flex; align-items: center; gap: 12px; }
-.month-input-wrap { min-width: 180px; }
-.loading-state { padding: 60px 0; display: flex; justify-content: center; }
-.detail-card { display: flex; flex-direction: column; gap: 8px; }
-.detail-card h2 { margin-bottom: 8px; }
-.detail-card p { color: var(--text-secondary); }
-.detail-card strong { color: var(--text-primary); }
+/* ── Salary Page Styles ─────────────────────────────── */
+.salary-page .salary-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.salary-page .month-input-wrap {
+  min-width: 180px;
+}
+
+/* Salary amount highlight */
+.salary-amount {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Small spinner for inline buttons */
+.spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Detail Card ───────────────────────────────────── */
+.detail-card .detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.detail-card .detail-header h2 {
+  margin: 0;
+}
+
+.detail-card .detail-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-item .detail-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.detail-item .detail-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.detail-item.highlight .detail-value {
+  color: var(--accent);
+  font-size: 1.2rem;
+}
+
+/* ── Send Results ──────────────────────────────────── */
+.send-results {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+}
+
+.send-result-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 0.4rem;
+}
+
+.send-result-item.success {
+  background: var(--success-bg);
+}
+
+.send-result-item.failed {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.result-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.send-result-item.success .result-icon {
+  color: var(--success);
+}
+
+.send-result-item.failed .result-icon {
+  color: #ef4444;
+}
+
+.result-name {
+  font-weight: 600;
+  min-width: 120px;
+}
+
+.result-msg {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* ── Config Modal ──────────────────────────────────── */
+.modal-lg {
+  max-width: 640px !important;
+}
+
+.config-form {
+  max-height: 65vh;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.config-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.config-section:last-of-type {
+  border-bottom: none;
+}
+
+.config-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.config-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.config-section-header h3 {
+  margin: 0;
+}
+
+.config-item-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.config-item-row .input-field {
+  flex: 1;
+}
+
+.config-item-row .input-amount {
+  max-width: 150px;
+  text-align: right;
+}
+
+.config-form textarea.input-field {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* ── Responsive ────────────────────────────────────── */
+@media (max-width: 768px) {
+  .salary-page .salary-controls {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .action-btns {
+    flex-wrap: wrap;
+  }
+}
