@@ -88,6 +88,33 @@ VALUES ('Asia/Ho_Chi_Minh', '08:00', '12:00', '13:00', '17:30', 0, 0)
 ON CONFLICT DO NOTHING;
 
 -- ============================================================
+-- Table: salary_slip_config
+-- Admin-customizable salary slip template (company info + extra items)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS salary_slip_config (
+    id SERIAL PRIMARY KEY,
+    company_name VARCHAR(255) NOT NULL DEFAULT 'IDVision',
+    company_address TEXT DEFAULT '',
+    company_phone VARCHAR(50) DEFAULT '',
+    extra_earnings JSONB NOT NULL DEFAULT '[]',
+    extra_deductions JSONB NOT NULL DEFAULT '[]',
+    footer_note TEXT DEFAULT '',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Default salary slip config
+INSERT INTO salary_slip_config (company_name, company_address, company_phone, extra_earnings, extra_deductions, footer_note)
+VALUES (
+    'IDVision',
+    '',
+    '',
+    '[]',
+    '[]',
+    'Phiếu lương này được tạo tự động bởi hệ thống IDVision.'
+) ON CONFLICT DO NOTHING;
+
+-- ============================================================
 -- Indexes for Performance
 -- ============================================================
 
