@@ -1,17 +1,13 @@
 """
-IDVision — Attendance Router
-Core attendance recognition and reporting endpoints.
+IDVision — Attendance Router (Refactored)
+Thin controller handling API requests for face recognition and password check-ins.
 """
 
-import base64
 import logging
-import os
-import uuid
 from datetime import datetime, date, timedelta, timezone
+from typing import Optional
 
-import bcrypt
-
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, HTTPException
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -27,299 +23,93 @@ from schemas import (
     AttendanceReportResponse,
     DailyStatsResponse,
 )
-from services.matcher import matcher_service
+from services.attendance_service import AttendanceService
 from services.payroll import (
-    calculate_employee_month_stats,
-    determine_status,
-    determine_period_type,
     get_or_create_policy,
     local_date_bounds_to_utc,
     to_local,
 )
-from services.telegram_bot import telegram_notifier
+from exceptions import FaceRecognitionError
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 router = APIRouter(prefix="/api/attendance", tags=["Attendance"])
+
+def get_attendance_service(request: Request) -> AttendanceService:
+    """Dependency: retrieves the attendance service from app state."""
+    return request.app.state.attendance_service
 
 
 @router.post("/recognize", response_model=RecognitionResult)
 async def recognize_face(
     data: RecognitionRequest,
     session: AsyncSession = Depends(get_db),
+    attendance_service: AttendanceService = Depends(get_attendance_service),
 ):
     """
     Core recognition endpoint — called by the AI service.
     
     Flow:
-    1. Receive face embedding from AI service
-    2. Check liveness (if anti-spoofing enabled)
-    3. Match against in-memory cache (cosine similarity)
-    4. Check for duplicate check-in
-    5. Determine status (on-time / late)
-    6. Insert attendance log
-    7. Send Telegram notification
+    1. Delegate checking to AttendanceService (takes embedding, liveness, snapshot).
+    2. Convert Domain result to API Schema format.
     """
-    now = datetime.now(timezone.utc)
-
-    # ── Step 1: Liveness check ──────────────────────────────
-    if settings.ANTI_SPOOFING_ENABLED and not data.is_live:
-        logger.warning(
-            f"Spoofing attempt detected! Liveness score: {data.liveness_score:.3f}"
-        )
-        return RecognitionResult(
-            recognized=False,
-            message="⛔ Phát hiện ảnh giả (spoofing). Vui lòng đến trực tiếp.",
-        )
-
-    # ── Step 2: Match face against cache ────────────────────
-    match = matcher_service.match_face(data.embedding)
-
-    if match is None:
-        return RecognitionResult(
-            recognized=False,
-            message="❌ Không nhận diện được. Khuôn mặt chưa được đăng ký.",
-        )
-
-    # ── Step 3: Check duplicate ─────────────────────────────
-    is_duplicate = await matcher_service.check_duplicate(
-        session=session,
-        employee_id=match.employee_id,
-        current_time=now,
-    )
-    if is_duplicate:
-        return RecognitionResult(
-            recognized=True,
-            employee_id=match.employee_id,
-            employee_name=match.employee_name,
-            similarity=match.similarity,
-            message=(
-                f"ℹ️ {match.employee_name} đã chấm công trong "
-                f"{settings.DUPLICATE_CHECK_MINUTES} phút gần đây."
-            ),
-        )
-
-    # ── Step 4: Determine status ────────────────────────────
-    policy = await get_or_create_policy(session)
-    status, late_minutes = determine_status(now, policy)
-    period_type = determine_period_type(now, policy)
-
-    # Override to LOW_CONFIDENCE if below a secondary threshold
-    LOW_CONFIDENCE_THRESHOLD = settings.SIMILARITY_THRESHOLD + 0.10
-    if match.similarity < LOW_CONFIDENCE_THRESHOLD:
-        status = "LOW_CONFIDENCE"
-
-    # ── Step 5: Save snapshot (if provided) ─────────────────
-    snapshot_path = None
-    if data.snapshot_base64:
-        try:
-            snapshot_dir = settings.SNAPSHOT_DIR
-            os.makedirs(snapshot_dir, exist_ok=True)
-            filename = f"{now.strftime('%Y%m%d_%H%M%S')}_{match.employee_id}_{uuid.uuid4().hex[:8]}.jpg"
-            snapshot_path = os.path.join(snapshot_dir, filename)
-            with open(snapshot_path, "wb") as f:
-                f.write(base64.b64decode(data.snapshot_base64))
-        except Exception as e:
-            logger.error(f"Failed to save snapshot: {e}")
-            snapshot_path = None
-
-    # ── Step 6: Insert attendance log ───────────────────────
-    log = AttendanceLog(
-        employee_id=match.employee_id,
-        check_in_time=now,
-        status=status,
-        confidence=match.similarity,
-        snapshot_path=snapshot_path,
-        period_type=period_type,
-    )
-    session.add(log)
-    await session.flush()
-
-    logger.info(
-        f"Attendance recorded: {match.employee_name} | "
-        f"Status: {status} | Confidence: {match.similarity:.4f}"
-    )
-
-    # ── Step 7: Send Telegram notification ──────────────────
     try:
-        local_now = to_local(now, policy)
-        month_str = to_local(now, policy).strftime("%Y-%m")
-        month_stats = await calculate_employee_month_stats(
+        res = await attendance_service.process_checkin_from_embedding(
             session=session,
-            employee_id=match.employee_id,
-            month_str=month_str,
-            policy=policy,
+            embedding=data.embedding,
+            snapshot_base64=data.snapshot_base64,
+            is_live=data.is_live,
+            liveness_score=data.liveness_score
         )
-        if status == "SUCCESS":
-            await telegram_notifier.send_checkin_success(
-                employee_name=match.employee_name,
-                check_in_time=local_now,
-                confidence=match.similarity,
-                worked_days=month_stats.worked_days,
-                worked_hours=month_stats.worked_hours,
-                employee_chat_id=match.telegram_chat_id,
-            )
-        elif status == "LATE":
-            await telegram_notifier.send_late_notification(
-                employee_name=match.employee_name,
-                check_in_time=local_now,
-                late_minutes=late_minutes,
-                confidence=match.similarity,
-                worked_days=month_stats.worked_days,
-                worked_hours=month_stats.worked_hours,
-                employee_chat_id=match.telegram_chat_id,
-            )
-        elif status == "LOW_CONFIDENCE":
-            await telegram_notifier.send_low_confidence_alert(
-                check_in_time=local_now,
-                confidence=match.similarity,
-            )
+        
+        return RecognitionResult(
+            recognized=res.success and res.status != "FAILED",
+            employee_id=res.employee_id,
+            employee_name=res.employee_name,
+            similarity=res.similarity,
+            status=res.status if res.status != "FAILED" else None,
+            message=res.message,
+            check_in_time=res.check_in_time,
+        )
+    except FaceRecognitionError as e:
+        # Business level recognition failure (e.g. NoMatchFoundError) should return 200 with recognized=False
+        return RecognitionResult(
+            recognized=False,
+            message=e.message,
+        )
     except Exception as e:
-        logger.error(f"Telegram notification failed: {e}")
-        # Don't fail the attendance recording if notification fails
-
-    # ── Build response ──────────────────────────────────────
-    status_messages = {
-        "SUCCESS": f"✅ {match.employee_name} đã chấm công thành công.",
-        "LATE": f"⚠️ {match.employee_name} đến trễ {late_minutes} phút.",
-        "LOW_CONFIDENCE": f"🔍 Nhận diện kém. Cần xác minh: {match.employee_name}.",
-    }
-
-    return RecognitionResult(
-        recognized=True,
-        employee_id=match.employee_id,
-        employee_name=match.employee_name,
-        similarity=match.similarity,
-        status=status,
-        message=status_messages.get(status, ""),
-        check_in_time=now,
-    )
+        logger.error(f"Recognition router error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Lỗi hệ thống khi nhận diện chấm công.")
 
 
 @router.post("/password-checkin", response_model=RecognitionResult)
 async def password_checkin(
     data: PasswordCheckinRequest,
     session: AsyncSession = Depends(get_db),
+    attendance_service: AttendanceService = Depends(get_attendance_service),
 ):
     """
     Password-based check-in — fallback when face recognition is unavailable.
-    Employee uses their employee_code + password to check in.
     """
-    now = datetime.now(timezone.utc)
-
-    # Find employee by code
-    result = await session.execute(
-        select(Employee).where(
-            Employee.employee_code == data.employee_code,
-            Employee.is_active == True,
-        )
-    )
-    employee = result.scalar_one_or_none()
-
-    if not employee:
-        return RecognitionResult(
-            recognized=False,
-            message="❌ Mã nhân viên không tồn tại hoặc đã bị vô hiệu hóa.",
-        )
-
-    # Verify password
-    if not employee.password_hash:
-        return RecognitionResult(
-            recognized=False,
-            message="❌ Nhân viên chưa được thiết lập mật khẩu. Liên hệ Admin.",
-        )
-
-    if not bcrypt.checkpw(data.password.encode("utf-8"), employee.password_hash.encode("utf-8")):
-        return RecognitionResult(
-            recognized=False,
-            message="❌ Mật khẩu không đúng.",
-        )
-
-    # Check duplicate
-    is_duplicate = await matcher_service.check_duplicate(
-        session=session,
-        employee_id=employee.id,
-        current_time=now,
-    )
-    if is_duplicate:
-        return RecognitionResult(
-            recognized=True,
-            employee_id=employee.id,
-            employee_name=employee.name,
-            message=(
-                f"ℹ️ {employee.name} đã chấm công trong "
-                f"{settings.DUPLICATE_CHECK_MINUTES} phút gần đây."
-            ),
-        )
-
-    # Determine status
-    policy = await get_or_create_policy(session)
-    status, late_minutes = determine_status(now, policy)
-    period_type = determine_period_type(now, policy)
-
-    # Insert attendance log
-    log = AttendanceLog(
-        employee_id=employee.id,
-        check_in_time=now,
-        check_method="PASSWORD",
-        period_type=period_type,
-        status=status,
-        confidence=None,
-        snapshot_path=None,
-    )
-    session.add(log)
-    await session.flush()
-
-    logger.info(
-        f"Password check-in: {employee.name} | Status: {status}"
-    )
-
-    # Send Telegram notification
     try:
-        local_now = to_local(now, policy)
-        month_str = to_local(now, policy).strftime("%Y-%m")
-        month_stats = await calculate_employee_month_stats(
+        res = await attendance_service.process_checkin_from_password(
             session=session,
-            employee_id=employee.id,
-            month_str=month_str,
-            policy=policy,
+            employee_code=data.employee_code,
+            password=data.password
         )
-        if status == "SUCCESS":
-            await telegram_notifier.send_checkin_success(
-                employee_name=employee.name,
-                check_in_time=local_now,
-                confidence=1.0,
-                worked_days=month_stats.worked_days,
-                worked_hours=month_stats.worked_hours,
-                employee_chat_id=employee.telegram_chat_id,
-            )
-        elif status == "LATE":
-            await telegram_notifier.send_late_notification(
-                employee_name=employee.name,
-                check_in_time=local_now,
-                late_minutes=late_minutes,
-                confidence=1.0,
-                worked_days=month_stats.worked_days,
-                worked_hours=month_stats.worked_hours,
-                employee_chat_id=employee.telegram_chat_id,
-            )
+        
+        return RecognitionResult(
+            recognized=res.success and res.status != "FAILED",
+            employee_id=res.employee_id,
+            employee_name=res.employee_name,
+            similarity=res.similarity,
+            status=res.status if res.status != "FAILED" else None,
+            message=res.message,
+            check_in_time=res.check_in_time,
+        )
     except Exception as e:
-        logger.error(f"Telegram notification failed: {e}")
-
-    status_messages = {
-        "SUCCESS": f"✅ {employee.name} đã chấm công thành công (mật khẩu).",
-        "LATE": f"⚠️ {employee.name} đến trễ {late_minutes} phút (mật khẩu).",
-    }
-
-    return RecognitionResult(
-        recognized=True,
-        employee_id=employee.id,
-        employee_name=employee.name,
-        similarity=None,
-        status=status,
-        message=status_messages.get(status, ""),
-        check_in_time=now,
-    )
+        logger.error(f"Password check-in router error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Lỗi hệ thống khi chấm công bằng mật khẩu.")
 
 
 @router.get("/today", response_model=list[AttendanceLogResponse])

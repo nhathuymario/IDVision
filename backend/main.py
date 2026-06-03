@@ -11,9 +11,10 @@ Face Recognition Attendance System with:
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 
 from sqlalchemy import select
 
@@ -24,6 +25,15 @@ from services.face_cache import face_cache
 from services.telegram_bot import telegram_notifier
 from routers import employees, enrollment, attendance, auth, policy, salary
 from routers import telegram_webhook
+
+# Import face recognition services & provider
+from services.providers.insightface_provider import InsightFaceProvider
+from services.face_detection_service import FaceDetectionService
+from services.face_embedding_service import FaceEmbeddingService
+from services.face_matching_service import FaceMatchingService
+from services.user_face_profile_service import UserFaceProfileService
+from services.attendance_service import AttendanceService
+from exceptions import FaceRecognitionError
 
 # ── Logging ─────────────────────────────────────────────────
 logging.basicConfig(
@@ -70,8 +80,9 @@ async def lifespan(app: FastAPI):
     Startup:
     1. Initialize database connection
     2. Load face encodings into memory cache
-    3. Initialize Telegram bot
-    4. Start Telegram polling for deep links
+    3. Initialize Face Recognition Provider & Services
+    4. Initialize Telegram bot
+    5. Start Telegram polling for deep links
     
     Shutdown:
     1. Stop Telegram polling
@@ -90,10 +101,38 @@ async def lifespan(app: FastAPI):
         count = await face_cache.load_from_db(session)
         logger.info(f"✅ Face cache loaded: {count} enrolled employees.")
 
-    # 3. Telegram bot
+    # 3. Face Recognition Provider & Services
+    # Check if GPU is available (InsightFace can use ctx_id=0 for first GPU, -1 for CPU)
+    # Defaulting to -1 (CPU) for standard Docker/local deployments unless overridden
+    provider = InsightFaceProvider(ctx_id=-1)
+    provider.initialize()
+    
+    detection_service = FaceDetectionService(provider=provider)
+    embedding_service = FaceEmbeddingService(provider=provider)
+    matching_service = FaceMatchingService()
+    user_face_profile_service = UserFaceProfileService(
+        detection_service=detection_service,
+        embedding_service=embedding_service
+    )
+    attendance_service = AttendanceService(
+        detection_service=detection_service,
+        embedding_service=embedding_service,
+        matching_service=matching_service
+    )
+    
+    # Store services in app.state for request dependency access
+    app.state.provider = provider
+    app.state.detection_service = detection_service
+    app.state.embedding_service = embedding_service
+    app.state.matching_service = matching_service
+    app.state.user_face_profile_service = user_face_profile_service
+    app.state.attendance_service = attendance_service
+    logger.info("✅ Face recognition provider & services initialized.")
+
+    # 4. Telegram bot
     await telegram_notifier.initialize()
 
-    # 4. Start Telegram polling for deep links
+    # 5. Start Telegram polling for deep links
     if telegram_notifier.is_enabled:
         await telegram_notifier.start_polling(on_link_callback=_on_telegram_link)
         logger.info("✅ Telegram deep link polling started.")
@@ -128,6 +167,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Exception handler for Domain Exception: FaceRecognitionError
+@app.exception_handler(FaceRecognitionError)
+async def face_recognition_exception_handler(request: Request, exc: FaceRecognitionError):
+    return JSONResponse(
+        status_code=400,
+        content={"detail": exc.message}
+    )
+
 # ── CORS ────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
@@ -145,6 +192,7 @@ app.include_router(auth.router)
 app.include_router(policy.router)
 app.include_router(salary.router)
 app.include_router(telegram_webhook.router)
+
 
 # ── Static Files (Frontend) ─────────────────────────────────
 import os
