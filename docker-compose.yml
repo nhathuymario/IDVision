@@ -67,6 +67,8 @@ services:
     environment:
       BACKEND_URL: http://backend:8000
       CAMERA_SOURCE: ${CAMERA_SOURCE:-0}
+    ports:
+      - "8001:8001"
     volumes:
       - ./ai_service/models:/app/models
     # Uncomment for webcam passthrough on Linux:

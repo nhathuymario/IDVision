@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Lock, ShieldCheck, Eye, EyeOff, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react'
-import { passwordCheckin } from '../api'
+import { passwordCheckin, faceRecognize } from '../api'
 import './CheckinPage.css'
 
 export default function CheckinPage() {
@@ -92,15 +92,10 @@ export default function CheckinPage() {
       canvas.getContext('2d').drawImage(videoRef.current, 0, 0)
       const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1]
 
-      // In production, AI service handles this.
-      // Here we send the snapshot for recognition.
-      // The AI service running alongside will handle actual embedding extraction.
-      setResult({
-        recognized: false,
-        message: '⚠️ Nhận diện khuôn mặt đang được xử lý bởi AI Service. Vui lòng dùng phương thức mật khẩu nếu AI Service chưa chạy.'
-      })
+      const res = await faceRecognize(null, base64)
+      setResult(res)
     } catch {
-      setResult({ recognized: false, message: '❌ Lỗi xử lý ảnh.' })
+      setResult({ recognized: false, message: '❌ Lỗi nhận diện khuôn mặt.' })
     }
     setLoading(false)
     setTimeout(() => setResult(null), 8000)

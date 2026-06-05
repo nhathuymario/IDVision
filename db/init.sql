@@ -32,7 +32,9 @@ CREATE TABLE IF NOT EXISTS attendance_logs (
     id SERIAL PRIMARY KEY,
     employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
     check_in_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    check_out_time TIMESTAMP WITH TIME ZONE,
     check_method VARCHAR(20) DEFAULT 'FACE' CHECK (check_method IN ('FACE', 'PASSWORD')),
+    period_type VARCHAR(20) DEFAULT 'MORNING_START' NOT NULL CONSTRAINT valid_period_type CHECK (period_type IN ('MORNING_START', 'LUNCH_START', 'LUNCH_END', 'EVENING_END')),
     status VARCHAR(50) NOT NULL CHECK (status IN ('SUCCESS', 'LATE', 'LOW_CONFIDENCE')),
     confidence FLOAT,                       -- Cosine similarity score (0.0 - 1.0)
     snapshot_path VARCHAR(500),             -- Path to face snapshot at check-in time
@@ -137,3 +139,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_employee_time
 -- Index for active employees lookup
 CREATE INDEX IF NOT EXISTS idx_employees_active 
     ON employees (is_active) WHERE is_active = TRUE;
+
+-- Create index for faster queries by period type
+CREATE INDEX IF NOT EXISTS idx_attendance_period
+    ON attendance_logs (employee_id, check_in_time, period_type);

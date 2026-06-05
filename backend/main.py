@@ -143,8 +143,7 @@ app.include_router(enrollment.router)
 app.include_router(attendance.router)
 app.include_router(auth.router)
 app.include_router(policy.router)
-app.include_router(salary.router)
-app.include_router(telegram_webhook.router)
+
 
 # ── Static Files (Frontend) ─────────────────────────────────
 import os

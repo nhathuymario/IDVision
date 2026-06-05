@@ -21,7 +21,7 @@ WORKDIR /app
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
@@ -34,4 +34,5 @@ RUN mkdir -p /app/models/anti_spoofing
 RUN python -c "from insightface.app import FaceAnalysis; app = FaceAnalysis(name='buffalo_l'); app.prepare(ctx_id=-1, det_size=(640,640)); print('Models downloaded successfully')" || \
     echo "Model pre-download skipped (will download on first run)"
 
-CMD ["python", "camera_stream.py"]
+EXPOSE 8001
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]

@@ -72,8 +72,54 @@ async def recognize_face(
             message="⛔ Phát hiện ảnh giả (spoofing). Vui lòng đến trực tiếp.",
         )
 
+    # ── Step 1.5: Extract embedding if not provided (browser webcam check-in) ──
+    embedding = data.embedding
+    if not embedding:
+        if not data.snapshot_base64:
+            raise HTTPException(
+                status_code=400,
+                detail="Either embedding or snapshot_base64 is required."
+            )
+        try:
+            # Decode base64 snapshot
+            import base64
+            img_bytes = base64.b64decode(data.snapshot_base64)
+            
+            # Call the ai_service container at port 8001
+            import httpx
+            with httpx.Client(timeout=15.0) as client:
+                files = {"file": ("snapshot.jpg", img_bytes, "image/jpeg")}
+                response = client.post("http://ai_service:8001/extract-embedding", files=files)
+                
+                if response.status_code == 200:
+                    res_data = response.json()
+                    embedding = res_data["embedding"]
+                elif response.status_code == 404:
+                    return RecognitionResult(
+                        recognized=False,
+                        message="❌ Không phát hiện được khuôn mặt trong ảnh chụp.",
+                    )
+                else:
+                    logger.error(f"AI Service returned error {response.status_code}: {response.text}")
+                    return RecognitionResult(
+                        recognized=False,
+                        message="⚠️ AI Service gặp sự cố khi xử lý hình ảnh.",
+                    )
+        except httpx.RequestError as e:
+            logger.error(f"Failed to connect to AI Service: {e}")
+            return RecognitionResult(
+                recognized=False,
+                message="⚠️ Không thể kết nối tới AI Service để nhận diện.",
+            )
+        except Exception as e:
+            logger.error(f"Error extracting embedding from snapshot: {e}")
+            return RecognitionResult(
+                recognized=False,
+                message="❌ Lỗi xử lý ảnh chụp check-in.",
+            )
+
     # ── Step 2: Match face against cache ────────────────────
-    match = matcher_service.match_face(data.embedding)
+    match = matcher_service.match_face(embedding)
 
     if match is None:
         return RecognitionResult(

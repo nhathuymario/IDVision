@@ -25,49 +25,35 @@ router = APIRouter(prefix="/api/enrollment", tags=["Enrollment"])
 
 def _extract_embedding_from_image(image_bytes: bytes) -> np.ndarray | None:
     """
-    Extract face embedding from image bytes using InsightFace.
-    
-    This function initializes InsightFace locally on the backend.
-    For production, this could be delegated to the AI service.
+    Extract face embedding from image bytes by calling the AI Service.
     """
+    import httpx
     try:
-        import cv2
-        from insightface.app import FaceAnalysis
-
-        # Initialize InsightFace (cached after first call)
-        if not hasattr(_extract_embedding_from_image, "_app"):
-            app = FaceAnalysis(name="buffalo_l")
-            app.prepare(ctx_id=-1, det_size=(640, 640))  # CPU mode
-            _extract_embedding_from_image._app = app
-
-        app = _extract_embedding_from_image._app
-
-        # Convert bytes to OpenCV image
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is None:
-            return None
-
-        # Detect faces and extract embeddings
-        faces = app.get(img)
-        if not faces:
-            return None
-
-        # Use the face with highest detection score
-        best_face = max(faces, key=lambda f: f.det_score)
-        return best_face.normed_embedding  # Already L2-normalized, shape (512,)
-
-    except ImportError:
-        logger.error(
-            "InsightFace not installed on backend. "
-            "Install with: pip install insightface onnxruntime"
-        )
+        # Call the ai_service container at port 8001
+        with httpx.Client(timeout=15.0) as client:
+            files = {"file": ("image.jpg", image_bytes, "image/jpeg")}
+            response = client.post("http://ai_service:8001/extract-embedding", files=files)
+            
+            if response.status_code == 200:
+                data = response.json()
+                return np.array(data["embedding"], dtype=np.float32)
+            elif response.status_code == 404:
+                logger.warning("No face detected in image sent to AI service.")
+                return None
+            else:
+                logger.error(f"AI Service returned error {response.status_code}: {response.text}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"AI Service failed to process image: {response.text}"
+                )
+    except httpx.RequestError as e:
+        logger.error(f"Failed to connect to AI Service: {e}")
         raise HTTPException(
-            status_code=500,
-            detail="Face detection model not available on backend."
+            status_code=503,
+            detail="AI Service is currently unavailable. Please try again later."
         )
     except Exception as e:
-        logger.error(f"Error extracting embedding: {e}")
+        logger.error(f"Error communicating with AI Service: {e}")
         return None
 
 

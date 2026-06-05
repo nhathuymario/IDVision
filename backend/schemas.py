@@ -71,7 +71,7 @@ class EnrollmentResponse(BaseModel):
 
 class RecognitionRequest(BaseModel):
     """Request from AI service with extracted face embedding."""
-    embedding: list[float] = Field(..., min_length=512, max_length=512)
+    embedding: Optional[list[float]] = Field(None, min_length=512, max_length=512)
     is_live: bool = True            # Liveness check result from AI service
     liveness_score: float = 1.0
     snapshot_base64: Optional[str] = None   # Base64 encoded snapshot image
