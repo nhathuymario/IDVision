@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Plus, Search, Edit2, Trash2, Camera, KeyRound, MessageCircle, Copy, Check } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, Search, Edit2, Trash2, Camera, KeyRound, MessageCircle, Copy, Check, RotateCcw, X } from 'lucide-react'
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee, enrollFace, getTelegramLink } from '../../api'
 import './Employees.css'
 
@@ -22,6 +22,10 @@ export default function Employees() {
   const [enrollEmp, setEnrollEmp] = useState(null)
   const [enrollFiles, setEnrollFiles] = useState([])
   const [enrollLoading, setEnrollLoading] = useState(false)
+  const [enrollMethod, setEnrollMethod] = useState('upload') // 'upload' | 'camera'
+  const [capturedPhotos, setCapturedPhotos] = useState([]) // Array of dataURLs
+  const [enrollCameraReady, setEnrollCameraReady] = useState(false)
+  const enrollVideoRef = useRef(null)
 
   // Telegram link modal
   const [isTelegramOpen, setIsTelegramOpen] = useState(false)
@@ -63,11 +67,17 @@ export default function Employees() {
         const dataToUpdate = { ...formData }
         if (!dataToUpdate.password) delete dataToUpdate.password
         await updateEmployee(editingEmp.id, dataToUpdate)
+        setIsModalOpen(false)
+        loadData()
       } else {
-        await createEmployee(formData)
+        const newEmp = await createEmployee(formData)
+        setIsModalOpen(false)
+        loadData()
+        if (newEmp && newEmp.id) {
+          // Automatically open face enrollment for the newly created employee
+          openEnroll(newEmp)
+        }
       }
-      setIsModalOpen(false)
-      loadData()
     } catch { alert('Lỗi khi lưu nhân viên!') }
   }
 
@@ -79,22 +89,99 @@ export default function Employees() {
     } catch { alert('Lỗi!') }
   }
 
+  // Camera helpers for face enrollment
+  async function startEnrollCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, facingMode: 'user' }
+      })
+      if (enrollVideoRef.current) {
+        enrollVideoRef.current.srcObject = stream
+        setEnrollCameraReady(true)
+      }
+    } catch (err) {
+      console.error(err)
+      setEnrollCameraReady(false)
+      alert('Không thể mở camera. Vui lòng cấp quyền hoặc chuyển sang chế độ tải lên file.')
+    }
+  }
+
+  function stopEnrollCamera() {
+    if (enrollVideoRef.current?.srcObject) {
+      enrollVideoRef.current.srcObject.getTracks().forEach(t => t.stop())
+      enrollVideoRef.current.srcObject = null
+    }
+    setEnrollCameraReady(false)
+  }
+
+  useEffect(() => {
+    if (isEnrollOpen && enrollMethod === 'camera') {
+      startEnrollCamera()
+    } else {
+      stopEnrollCamera()
+    }
+    return () => stopEnrollCamera()
+  }, [isEnrollOpen, enrollMethod])
+
+  function captureEnrollPhoto() {
+    if (!enrollCameraReady || !enrollVideoRef.current) return
+    if (capturedPhotos.length >= 5) {
+      alert('Đã đạt số lượng ảnh tối đa (5 ảnh).')
+      return
+    }
+    const canvas = document.createElement('canvas')
+    canvas.width = enrollVideoRef.current.videoWidth
+    canvas.height = enrollVideoRef.current.videoHeight
+    canvas.getContext('2d').drawImage(enrollVideoRef.current, 0, 0)
+    const dataURL = canvas.toDataURL('image/jpeg', 0.95)
+    setCapturedPhotos([...capturedPhotos, dataURL])
+  }
+
+  function removeCapturedPhoto(index) {
+    setCapturedPhotos(capturedPhotos.filter((_, i) => i !== index))
+  }
+
   function openEnroll(emp) {
     setEnrollEmp(emp)
     setEnrollFiles([])
+    setCapturedPhotos([])
+    setEnrollMethod('upload')
     setIsEnrollOpen(true)
   }
 
   async function handleEnrollSubmit(e) {
     e.preventDefault()
-    if (enrollFiles.length === 0) return alert('Vui lòng chọn ảnh')
     setEnrollLoading(true)
     try {
-      await enrollFace(enrollEmp.id, Array.from(enrollFiles))
+      let filesToUpload = []
+      if (enrollMethod === 'upload') {
+        if (enrollFiles.length === 0) {
+          alert('Vui lòng chọn ảnh!')
+          setEnrollLoading(false)
+          return
+        }
+        filesToUpload = Array.from(enrollFiles)
+      } else {
+        if (capturedPhotos.length === 0) {
+          alert('Vui lòng chụp ít nhất 1 ảnh!')
+          setEnrollLoading(false)
+          return
+        }
+        const filesPromises = capturedPhotos.map(async (dataURL, index) => {
+          const res = await fetch(dataURL)
+          const blob = await res.blob()
+          return new File([blob], `captured_face_${index + 1}.jpg`, { type: 'image/jpeg' })
+        })
+        filesToUpload = await Promise.all(filesPromises)
+      }
+
+      await enrollFace(enrollEmp.id, filesToUpload)
       alert('Đăng ký khuôn mặt thành công!')
       setIsEnrollOpen(false)
       loadData()
-    } catch { alert('Lỗi khi đăng ký khuôn mặt!') }
+    } catch {
+      alert('Lỗi khi đăng ký khuôn mặt!')
+    }
     setEnrollLoading(false)
   }
 
@@ -248,31 +335,117 @@ export default function Employees() {
       {/* Enroll Modal */}
       {isEnrollOpen && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ maxWidth: enrollMethod === 'camera' ? '500px' : '440px' }}>
             <div className="modal-header">
               <h2>Cập nhật Face ID</h2>
               <button className="modal-close" onClick={() => setIsEnrollOpen(false)}>×</button>
             </div>
             <div className="enroll-info">
               <p>Nhân viên: <strong>{enrollEmp?.name}</strong></p>
-              <p className="text-muted">Tải lên 1-5 ảnh rõ mặt (không đeo khẩu trang) để hệ thống học.</p>
+              <p className="text-muted">Đăng ký khuôn mặt rõ nét (không đeo khẩu trang, kính râm) để hệ thống học.</p>
             </div>
+
+            {/* Toggle tabs for file upload or direct camera capture */}
+            <div className="enroll-tabs">
+              <button
+                type="button"
+                className={`enroll-tab-btn ${enrollMethod === 'upload' ? 'active' : ''}`}
+                onClick={() => setEnrollMethod('upload')}
+              >
+                Tải ảnh lên
+              </button>
+              <button
+                type="button"
+                className={`enroll-tab-btn ${enrollMethod === 'camera' ? 'active' : ''}`}
+                onClick={() => setEnrollMethod('camera')}
+              >
+                Chụp bằng Camera
+              </button>
+            </div>
+
             <form onSubmit={handleEnrollSubmit} className="modal-form">
-              <div className="input-group">
-                <label>Chọn ảnh (.jpg, .png)</label>
-                <input type="file" multiple accept="image/*" className="input-field file-input"
-                  onChange={e => setEnrollFiles(e.target.files)} />
-              </div>
-              <div className="modal-actions">
+              {enrollMethod === 'upload' ? (
+                <div className="input-group" style={{ padding: '0 1rem' }}>
+                  <label>Chọn ảnh (.jpg, .png)</label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="input-field file-input"
+                    onChange={e => setEnrollFiles(e.target.files)}
+                  />
+                  <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                    Có thể chọn cùng lúc nhiều ảnh (khuyên dùng 3-5 ảnh với các góc mặt khác nhau).
+                  </p>
+                </div>
+              ) : (
+                <div className="enroll-camera-container">
+                  <div className="enroll-camera-box">
+                    <video ref={enrollVideoRef} autoPlay playsInline muted className="enroll-video" />
+                    {enrollCameraReady ? (
+                      <div className="camera-overlay">
+                        <div className="face-guide">
+                          <span className="corner tl" /><span className="corner tr" />
+                          <span className="corner bl" /><span className="corner br" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="enroll-camera-placeholder">
+                        <Camera size={36} strokeWidth={1.5} />
+                        <p>Đang tải Camera...</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={captureEnrollPhoto}
+                    disabled={!enrollCameraReady}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  >
+                    <Camera size={16} /> Chụp ảnh ({capturedPhotos.length}/5)
+                  </button>
+
+                  {capturedPhotos.length > 0 && (
+                    <div className="captured-photos-section">
+                      <div className="captured-photos-header">
+                        <span>Ảnh đã chụp:</span>
+                        <span onClick={() => setCapturedPhotos([])} style={{ cursor: 'pointer', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          <RotateCcw size={12} /> Xóa hết
+                        </span>
+                      </div>
+                      <div className="captured-photos-grid">
+                        {capturedPhotos.map((photo, index) => (
+                          <div key={index} className="captured-photo-card">
+                            <img src={photo} alt={`Captured ${index}`} className="captured-photo-img" />
+                            <button
+                              type="button"
+                              className="remove-photo-btn"
+                              onClick={() => removeCapturedPhoto(index)}
+                              title="Xóa ảnh này"
+                            >
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setIsEnrollOpen(false)}>Hủy</button>
                 <button type="submit" className="btn btn-primary" disabled={enrollLoading}>
-                  {enrollLoading ? 'Đang xử lý...' : 'Upload & Đăng ký'}
+                  {enrollLoading ? 'Đang xử lý...' : 'Đăng ký Face ID'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
 
       {/* Telegram Deep Link Modal */}
       {isTelegramOpen && (

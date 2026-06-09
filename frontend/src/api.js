@@ -54,6 +54,15 @@ export async function faceRecognize(embedding, snapshotBase64) {
   return res.json();
 }
 
+export async function recognizeFaceImage(imageBase64) {
+  const res = await request('/api/attendance/recognize-face', {
+    method: 'POST',
+    body: JSON.stringify({ image_base64: imageBase64 }),
+  });
+  return res.json();
+}
+
+
 // ── Admin Auth ──────────────────────────────────────────────
 export async function adminLogin(username, password) {
   const res = await request('/api/admin/login', {
