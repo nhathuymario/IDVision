@@ -26,6 +26,7 @@ from schemas import (
     AttendanceLogResponse,
     AttendanceReportResponse,
     DailyStatsResponse,
+    FaceImageRequest,
 )
 from services.matcher import matcher_service
 from services.payroll import (
@@ -240,6 +241,50 @@ async def recognize_face(
         message=status_messages.get(status, ""),
         check_in_time=now,
     )
+
+
+@router.post("/recognize-face", response_model=RecognitionResult)
+async def recognize_face_from_image(
+    data: FaceImageRequest,
+    session: AsyncSession = Depends(get_db),
+):
+    """
+    Recognize face from base64 image sent directly by the frontend browser.
+    
+    Flow:
+    1. Decode base64 image
+    2. Extract embedding using InsightFace
+    3. Pass to recognize_face for business matching, logging and notifications
+    """
+    try:
+        image_bytes = base64.b64decode(data.image_base64)
+    except Exception as e:
+        logger.error(f"Failed to decode base64 image: {e}")
+        return RecognitionResult(
+            recognized=False,
+            message="❌ Ảnh gửi từ camera không hợp lệ.",
+        )
+
+    # Import locally to avoid startup dependency issues
+    from routers.enrollment import _extract_embedding_from_image
+    embedding = _extract_embedding_from_image(image_bytes)
+
+    if embedding is None:
+        return RecognitionResult(
+            recognized=False,
+            message="❌ Không phát hiện thấy khuôn mặt nào trong ảnh.",
+        )
+
+    # Construct RecognitionRequest with the extracted embedding
+    recognition_data = RecognitionRequest(
+        embedding=embedding.tolist(),
+        is_live=True,
+        liveness_score=1.0,
+        snapshot_base64=data.image_base64,
+    )
+
+    # Call the core recognition logic to handle database matching, checks, logs and notifications
+    return await recognize_face(data=recognition_data, session=session)
 
 
 @router.post("/password-checkin", response_model=RecognitionResult)

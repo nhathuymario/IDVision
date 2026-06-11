@@ -77,6 +77,11 @@ class RecognitionRequest(BaseModel):
     snapshot_base64: Optional[str] = None   # Base64 encoded snapshot image
 
 
+class FaceImageRequest(BaseModel):
+    """Request from frontend with a camera-captured image for recognition."""
+    image_base64: str = Field(..., description="Base64-encoded JPEG image from camera")
+
+
 class RecognitionResult(BaseModel):
     """Response for recognition request."""
     recognized: bool

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Lock, ShieldCheck, Eye, EyeOff, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react'
-import { passwordCheckin, faceRecognize } from '../api'
+import { passwordCheckin, recognizeFaceImage } from '../api'
 import './CheckinPage.css'
 
 export default function CheckinPage() {
@@ -92,7 +92,7 @@ export default function CheckinPage() {
       canvas.getContext('2d').drawImage(videoRef.current, 0, 0)
       const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1]
 
-      const res = await faceRecognize(null, base64)
+      const res = await recognizeFaceImage(base64)
       setResult(res)
     } catch {
       setResult({ recognized: false, message: '❌ Lỗi nhận diện khuôn mặt.' })
